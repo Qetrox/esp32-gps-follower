@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 GPS Follower - Live Tracker</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="tracker-styles.css">
+</head>
+
+<body>
+    <div class="tracker-container">
+        <header class="tracker-header">
+            <div class="header-content">
+                <h1>ESP32 GPS Tracker</h1>
+                <nav class="nav-links">
+                    <a href="/" class="nav-link active">Live Tracker</a>
+                    <a href="/admin" class="nav-link">Admin Panel</a>
+                </nav>
+            </div>
+        </header>
+
+        <main class="tracker-main">
+            <div class="status-bar">
+                <div class="status-item">
+                    <span class="status-label">Connection:</span>
+                    <span id="connectionStatus" class="status-value offline">Offline</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Last Update:</span>
+                    <span id="lastUpdate" class="status-value">Never</span>
+                </div>
+            </div>
+
+            <div id="map" class="map-container"></div>
+
+            <div id="gpsPanel" class="gps-panel">
+                <div class="gps-data">
+                    <div class="data-group">
+                        <div class="data-item">
+                            <span class="data-label">Latitude:</span>
+                            <span id="latitude" class="data-value">--</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="data-label">Longitude:</span>
+                            <span id="longitude" class="data-value">--</span>
+                        </div>
+                    </div>
+                    <div class="data-group">
+                        <div class="data-item">
+                            <span class="data-label">Speed:</span>
+                            <span id="speed" class="data-value">-- km/h</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="data-label">Altitude:</span>
+                            <span id="altitude" class="data-value">-- m</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="controls">
+                    <button id="centerButton" class="control-btn">Center on Tracker</button>
+                </div>
+            </div>
+
+
+        </main>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="tracker.js"></script>
+</body>
+
+</html>

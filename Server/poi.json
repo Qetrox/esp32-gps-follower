@@ -1,0 +1,62 @@
+[
+    {
+        "id": 1,
+        "title": "Home Base",
+        "description": "Starting point for GPS tracking adventures. This is where the ESP32 device is typically configured and tested.",
+        "latitude": 52.370216,
+        "longitude": 4.895168,
+        "category": "home",
+        "icon": "🏠",
+        "color": "#4CAF50"
+    },
+    {
+        "id": 2,
+        "title": "City Center",
+        "description": "Main city center with shops, restaurants, and landmarks. Good place to test GPS accuracy in urban environment.",
+        "latitude": 51.922500,
+        "longitude": 4.479170,
+        "category": "landmark",
+        "icon": "🏛️",
+        "color": "#2196F3"
+    },
+    {
+        "id": 3,
+        "title": "Park Entrance",
+        "description": "Beautiful park perfect for testing GPS tracking during walks. Features walking trails and outdoor activities.",
+        "latitude": 53.219383,
+        "longitude": 6.566502,
+        "category": "recreation",
+        "icon": "🌳",
+        "color": "#8BC34A"
+    },
+    {
+        "id": 4,
+        "title": "Coffee Shop",
+        "description": "Local coffee shop with WiFi. Great spot to monitor GPS tracking data while enjoying a warm beverage.",
+        "latitude": 52.090737,
+        "longitude": 5.121420,
+        "category": "food",
+        "icon": "☕",
+        "color": "#FF9800"
+    },
+    {
+        "id": 5,
+        "title": "Tech Hub",
+        "description": "Local technology center and maker space. Perfect for ESP32 development and troubleshooting.",
+        "latitude": 51.441642,
+        "longitude": 5.469722,
+        "category": "tech",
+        "icon": "🔧",
+        "color": "#9C27B0"
+    },
+    {
+        "id": 6,
+        "title": "Viewpoint",
+        "description": "Scenic overlook with great views of the surrounding area. Excellent for testing GPS altitude readings.",
+        "latitude": 52.011578,
+        "longitude": 4.357068,
+        "category": "scenic",
+        "icon": "📸",
+        "color": "#FF5722"
+    }
+]

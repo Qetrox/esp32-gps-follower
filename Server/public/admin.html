@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 GPS Follower - Admin Panel</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>WiFi Network Manager</h1>
+            <p>Manage WiFi networks for your ESP32 GPS Follower</p>
+            <nav class="nav-links">
+                <a href="/" class="nav-link">GPS Tracker</a>
+                <a href="/admin" class="nav-link active">Admin Panel</a>
+            </nav>
+        </header>
+
+        <main class="admin-main">
+            <section class="form-section">
+                <h2>Add New Network</h2>
+                <form id="wifiForm">
+                    <div class="form-group">
+                        <label for="ssid">Network Name (SSID):</label>
+                        <input type="text" id="ssid" name="ssid" required placeholder="Enter WiFi network name">
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password:</label>
+                        <input type="password" id="password" name="password" required placeholder="Enter WiFi password">
+                        <button type="button" id="showPassword" class="show-password">Show</button>
+                    </div>
+                    <div class="form-buttons">
+                        <button type="submit" id="submitBtn">Add Network</button>
+                        <button type="button" id="cancelBtn" style="display: none;">Cancel</button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="networks-section">
+                <h2>Saved Networks</h2>
+                <div id="loading" class="loading">Loading networks...</div>
+                <div id="networksContainer">
+                </div>
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <p>No WiFi networks configured yet.</p>
+                    <p>Add your first network using the form above.</p>
+                </div>
+            </section>
+
+            <!-- API Key Configuration -->
+            <section class="config-section">
+                <h3>API Configuration</h3>
+                <div class="form-group">
+                    <label for="apiKey">API Key:</label>
+                    <input type="password" id="apiKey" placeholder="Enter API key for server access">
+                    <button type="button" id="showApiKey" class="show-password">Show</button>
+                </div>
+                <p class="help-text">Enter the API key to manage WiFi networks and UI configuration.</p>
+            </section>
+
+            <!-- UI Configuration -->
+            <section class="ui-config-section">
+                <h2>UI Configuration</h2>
+                <p>Customize the appearance and behavior of the GPS tracker interface</p>
+
+                <div class="config-tabs">
+                    <button class="tab-btn active" data-tab="titles">Titles & Text</button>
+                    <button class="tab-btn" data-tab="tracker">Tracker Settings</button>
+                    <button class="tab-btn" data-tab="data-display">Data Display</button>
+                    <button class="tab-btn" data-tab="map">Map Settings</button>
+                </div>
+
+                <div class="tab-content active" id="titles-tab">
+                    <h3>Page Titles & Navigation</h3>
+                    <div class="form-group">
+                        <label for="webpageTitle">Webpage Title:</label>
+                        <input type="text" id="webpageTitle" placeholder="ESP32 GPS Follower - Live Tracker">
+                    </div>
+                    <div class="form-group">
+                        <label for="navbarTitle">Navbar Title:</label>
+                        <input type="text" id="navbarTitle" placeholder="ESP32 GPS Tracker">
+                    </div>
+                    <div class="form-group">
+                        <label for="trackerTitle">Tracker Popup Title:</label>
+                        <input type="text" id="trackerTitle" placeholder="GPS Tracker">
+                    </div>
+                    <div class="form-group">
+                        <label for="trackerDescription">Tracker Description:</label>
+                        <textarea id="trackerDescription" placeholder="Live GPS position from ESP32 device"></textarea>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="tracker-tab">
+                    <h3>Tracker Appearance</h3>
+                    <div class="form-group">
+                        <label for="useCustomIcon">
+                            <input type="checkbox" id="useCustomIcon"> Use custom icon image
+                        </label>
+                    </div>
+                    <div class="form-group" id="customIconGroup" style="display: none;">
+                        <label for="customIconUrl">Custom Icon URL:</label>
+                        <input type="url" id="customIconUrl" placeholder="https://example.com/icon.png">
+                    </div>
+                    <div class="form-group" id="iconSizeGroup" style="display: none;">
+                        <label for="iconWidth">Icon Width:</label>
+                        <input type="number" id="iconWidth" value="32" min="16" max="64">
+                        <label for="iconHeight">Icon Height:</label>
+                        <input type="number" id="iconHeight" value="32" min="16" max="64">
+                    </div>
+                </div>
+
+                <div class="tab-content" id="data-display-tab">
+                    <h3>Data Panel Settings</h3>
+                    <div class="form-group">
+                        <label for="showDataPanel">
+                            <input type="checkbox" id="showDataPanel" checked> Show data panel
+                        </label>
+                    </div>
+
+                    <h4>Tracker Popup Data</h4>
+                    <div class="checkbox-grid">
+                        <label><input type="checkbox" id="showLatitude" checked> Latitude</label>
+                        <label><input type="checkbox" id="showLongitude" checked> Longitude</label>
+                        <label><input type="checkbox" id="showSpeed" checked> Speed</label>
+                        <label><input type="checkbox" id="showAltitude" checked> Altitude</label>
+                        <label><input type="checkbox" id="showTimestamp" checked> Timestamp</label>
+                        <label><input type="checkbox" id="showDescription" checked> Description</label>
+                    </div>
+
+                    <h4>Data Panel Labels</h4>
+                    <div class="form-group">
+                        <label for="latLabel">Latitude Label:</label>
+                        <input type="text" id="latLabel" value="Latitude:">
+                    </div>
+                    <div class="form-group">
+                        <label for="lngLabel">Longitude Label:</label>
+                        <input type="text" id="lngLabel" value="Longitude:">
+                    </div>
+                    <div class="form-group">
+                        <label for="speedLabel">Speed Label:</label>
+                        <input type="text" id="speedLabel" value="Speed:">
+                    </div>
+                    <div class="form-group">
+                        <label for="altLabel">Altitude Label:</label>
+                        <input type="text" id="altLabel" value="Altitude:">
+                    </div>
+                </div>
+
+                <div class="tab-content" id="map-tab">
+                    <h3>Map Configuration</h3>
+                    <div class="form-group">
+                        <label for="defaultZoom">Default Zoom Level:</label>
+                        <input type="range" id="defaultZoom" min="1" max="19" value="15">
+                        <span id="zoomValue">15</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="updateInterval">Update Interval (ms):</label>
+                        <input type="number" id="updateInterval" value="2000" min="1000" max="10000" step="500">
+                    </div>
+                </div>
+
+                <div class="config-actions">
+                    <button type="button" id="loadConfig" class="btn secondary">Load Current Config</button>
+                    <button type="button" id="saveConfig" class="btn primary">Save Configuration</button>
+                    <button type="button" id="resetConfig" class="btn danger">Reset to Defaults</button>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2025 ESP32 GPS Follower Project</p>
+        </footer>
+    </div>
+
+    <!-- Notification System -->
+    <div id="notification" class="notification"></div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

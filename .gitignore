@@ -1,0 +1,7 @@
+Server/node_modules/
+Server/package-lock.json
+Server/pnpm-lock.yaml
+Server/.env
+Server/config.json
+Server/latest-gps.json
+Server/wifi.json
