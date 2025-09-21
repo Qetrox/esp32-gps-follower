@@ -25,7 +25,23 @@ const GPS_DATA_FILE = "./latest-gps.json";
 const POI_FILE = "./poi.json";
 const CONFIG_FILE = "./config.json";
 
-let latestGPSData = null;
+let latestGPSData = null; // Will store extended structure
+
+/*
+ Extended latestGPSData structure:
+ {
+     lat: Number,
+     lng: Number,
+     speed: Number,
+     alt: Number,
+     fix: Boolean,           // whether the latest packet had a GPS fix
+     sats: Number|null,      // satellites from latest packet if no fix (or with fix if provided)
+     hdop: Number|null,      // hdop from latest packet if provided
+     lastPacketTimestamp: ISOString, // when any packet (fix or no-fix) was received
+     lastFixTimestamp: ISOString|null, // when last valid fix was received
+     timestamp: ISOString    // kept for backwards compat (same as lastFixTimestamp when fix=true else still previous fix time)
+ }
+*/
 
 function loadPOIData() {
     try {
@@ -38,12 +54,42 @@ function loadPOIData() {
     return [];
 }
 
-function saveLatestGPS(data) {
-    latestGPSData = {
-        ...data,
-        timestamp: new Date().toISOString()
-    };
-    // Optionally save to file for persistence
+function saveLatestGPS(packet) {
+    const now = new Date().toISOString();
+
+    // Initialize object if first time
+    if (!latestGPSData) {
+        latestGPSData = {
+            lat: null,
+            lng: null,
+            speed: null,
+            alt: null,
+            fix: false,
+            sats: null,
+            hdop: null,
+            lastPacketTimestamp: now,
+            lastFixTimestamp: null,
+            timestamp: null
+        };
+    }
+
+    const { fix, lat, lng, speed, alt, sats, hdop } = packet;
+
+    latestGPSData.lastPacketTimestamp = now;
+    latestGPSData.fix = !!fix;
+    if (typeof sats !== 'undefined') latestGPSData.sats = sats;
+    if (typeof hdop !== 'undefined') latestGPSData.hdop = hdop;
+
+    if (fix) {
+        // Update positional data only on a valid fix
+        latestGPSData.lat = lat;
+        latestGPSData.lng = lng;
+        latestGPSData.speed = speed;
+        latestGPSData.alt = alt;
+        latestGPSData.lastFixTimestamp = now;
+        latestGPSData.timestamp = now; // maintain previous field for compatibility
+    }
+
     try {
         fs.writeFileSync(GPS_DATA_FILE, JSON.stringify(latestGPSData, null, 2));
     } catch (error) {
@@ -53,16 +99,31 @@ function saveLatestGPS(data) {
 
 function loadLatestGPS() {
     if (latestGPSData) return latestGPSData;
-    
     try {
         if (fs.existsSync(GPS_DATA_FILE)) {
-            latestGPSData = JSON.parse(fs.readFileSync(GPS_DATA_FILE, "utf8"));
+            const raw = JSON.parse(fs.readFileSync(GPS_DATA_FILE, "utf8"));
+            // Detect old format (no fix field)
+            if (raw && typeof raw.fix === 'undefined') {
+                latestGPSData = {
+                    lat: raw.lat ?? null,
+                    lng: raw.lng ?? null,
+                    speed: raw.speed ?? null,
+                    alt: raw.alt ?? null,
+                    fix: true, // assume it was a fix snapshot
+                    sats: null,
+                    hdop: null,
+                    lastPacketTimestamp: raw.timestamp || new Date().toISOString(),
+                    lastFixTimestamp: raw.timestamp || null,
+                    timestamp: raw.timestamp || null
+                };
+            } else {
+                latestGPSData = raw;
+            }
             return latestGPSData;
         }
     } catch (error) {
         console.error('Error loading GPS data:', error);
     }
-    
     return null;
 }
 
@@ -83,24 +144,37 @@ function checkKey(req, res, next) {
 }
 
 app.get("/receivedata", checkKey, (req, res) => {
-    const { lat, lng, speed, alt } = req.query;
+    const { lat, lng, speed, alt, fix, sats, hdop } = req.query;
 
-    console.log("GPS data received:");
-    console.log("Latitude:", lat);
-    console.log("Longitude:", lng);
-    console.log("Speed:", speed, "km/h");
-    console.log("Altitude:", alt, "m");
+    const isFix = fix === 'true' || fix === '1';
+
+    if (isFix) {
+        console.log("GPS FIX received:");
+        console.log("Latitude:", lat);
+        console.log("Longitude:", lng);
+        console.log("Speed:", speed, "km/h");
+        console.log("Altitude:", alt, "m");
+    } else {
+        console.log("NO FIX packet received:");
+        console.log("Satellites:", sats);
+        console.log("HDOP:", hdop);
+    }
+    console.log("Fix flag:", isFix);
     console.log("---------------------");
 
-    const gpsData = {
-        lat: parseFloat(lat),
-        lng: parseFloat(lng),
-        speed: parseFloat(speed),
-        alt: parseFloat(alt)
+    const packet = {
+        fix: isFix,
+        lat: isFix ? parseFloat(lat) : latestGPSData?.lat ?? null,
+        lng: isFix ? parseFloat(lng) : latestGPSData?.lng ?? null,
+        speed: isFix ? parseFloat(speed) : latestGPSData?.speed ?? null,
+        alt: isFix ? parseFloat(alt) : latestGPSData?.alt ?? null,
+        sats: typeof sats !== 'undefined' ? (sats === '' ? null : parseInt(sats)) : undefined,
+        hdop: typeof hdop !== 'undefined' ? (hdop === '' ? null : parseFloat(hdop)) : undefined
     };
-    saveLatestGPS(gpsData);
 
-    res.send("Data received!");
+    saveLatestGPS(packet);
+
+    res.json({ status: 'ok', fix: isFix });
 });
 
 app.get("/api/latest-gps", (req, res) => {
