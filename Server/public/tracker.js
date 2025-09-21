@@ -313,10 +313,18 @@ class GPSTracker {
         const statusElement = document.getElementById('connectionStatus');
         const lastUpdateElement = document.getElementById('lastUpdate');
 
-        if (!this.isConnected) {
+        // Determine staleness (no packet for > 60s)
+        const now = Date.now();
+        const stale = this.lastPacketTime ? (now - this.lastPacketTime.getTime() > 60000) : false;
+
+        if (!this.isConnected || stale) {
             statusElement.textContent = 'Offline';
             statusElement.className = 'status-value offline';
-            lastUpdateElement.textContent = 'Never';
+            if (!this.lastPacketTime) {
+                lastUpdateElement.textContent = 'Never';
+            } else {
+                lastUpdateElement.textContent = this.lastPacketTime.toLocaleTimeString();
+            }
             return;
         }
 
@@ -328,8 +336,8 @@ class GPSTracker {
             statusElement.className = 'status-value online';
         }
 
-        if (this.lastFixTime) {
-            lastUpdateElement.textContent = this.lastFixTime.toLocaleTimeString();
+        if (this.lastPacketTime) {
+            lastUpdateElement.textContent = this.lastPacketTime.toLocaleTimeString();
         } else {
             lastUpdateElement.textContent = '—';
         }
