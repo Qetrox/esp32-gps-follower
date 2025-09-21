@@ -8,12 +8,12 @@
 HardwareSerial GPSserial(1);
 TinyGPSPlus gps;
 
-const char *serverBase = "http://hostname/receivedata";
-const char *wifiApi = "http://hostname/wifi?key=keyvalue";
+const char *serverBase = "https://esp32tracker.com/receivedata";
+const char *wifiApi = "https://esp32tracker.com/wifi?key=YOUR_API_KEY";
 
 // Fallback WiFi (always available)
-const char *defaultSSID = "TP-Link_2.4GHz";
-const char *defaultPASS = "password123";
+const char *defaultSSID = "FALLBACK_SSID";
+const char *defaultPASS = "FALLBACK_PASSWORD";
 
 struct WifiNetwork {
   String ssid;
@@ -108,7 +108,7 @@ void fetchWifiList() {
 }
 
 // Try to connect to one WiFi
-bool tryConnect(const char* ssid, const char* pass) {
+bool tryConnect(const char *ssid, const char *pass) {
   Serial.printf("Trying WiFi: %s\n", ssid);
   WiFi.disconnect(true);
   WiFi.begin(ssid, pass);
@@ -151,7 +151,7 @@ void setup() {
   Serial.begin(115200);
   GPSserial.begin(9600, SERIAL_8N1, 16, 17);
 
-  if (!SPIFFS.begin(true)) {   // true = format if corrupted
+  if (!SPIFFS.begin(true)) {  // true = format if corrupted
     Serial.println("SPIFFS Mount Failed");
   }
 
@@ -185,12 +185,27 @@ void loop() {
 
     if (WiFi.status() == WL_CONNECTED) {
       HTTPClient http;
-      String url = String(serverBase) +
-                   "?key=keyvalue" +
-                   "&lat=" + String(lat, 6) +
-                   "&lng=" + String(lng, 6) +
-                   "&speed=" + String(speed, 2) +
-                   "&alt=" + String(alt, 2);
+      String url = String(serverBase) + "?key=YOUR_API_KEY" + "&fix=true" + "&lat=" + String(lat, 6) + "&lng=" + String(lng, 6) + "&speed=" + String(speed, 2) + "&alt=" + String(alt, 2);
+
+      http.begin(url);
+      int httpCode = http.GET();
+      if (httpCode > 0) {
+        Serial.printf("Server response: %d\n", httpCode);
+      } else {
+        Serial.printf("HTTP error: %s\n", http.errorToString(httpCode).c_str());
+      }
+      http.end();
+    }
+  } else {
+    // No fix: debug + notify server
+    int sats = gps.satellites.isValid() ? gps.satellites.value() : -1;
+    float hdop = gps.hdop.isValid() ? gps.hdop.hdop() : -1;
+
+    Serial.printf("No fix. Satellites: %d, HDOP: %.2f\n", sats, hdop);
+
+    if (WiFi.status() == WL_CONNECTED) {
+      HTTPClient http;
+      String url = String(serverBase) + "?key=YOUR_API_KEY" + "&fix=false" + "&sats=" + String(sats) + "&hdop=" + String(hdop, 2);
 
       http.begin(url);
       int httpCode = http.GET();

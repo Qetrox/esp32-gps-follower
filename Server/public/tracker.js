@@ -3,13 +3,15 @@ class GPSTracker {
         this.map = null;
         this.currentMarker = null;
         this.lastPosition = null;
-        this.isConnected = false;
-        this.lastUpdateTime = null;
+        this.isConnected = false; // whether we have any recent packet
+        this.hasFix = false; // whether latest packet had a fix
+        this.lastFixTime = null; // Date of last valid fix
+        this.lastPacketTime = null; // Date of last packet (fix or not)
         this.pollInterval = null;
         this.poiMarkers = [];
         this.trackerPopupWasOpen = false;
         this.config = null;
-        
+
         this.init();
     }
 
@@ -44,23 +46,33 @@ class GPSTracker {
                 title: { tracker: "GPS Tracker" },
                 dataPanel: {
                     labels: {
-                        latitude: "Latitude:", longitude: "Longitude:",
-                        speed: "Speed:", altitude: "Altitude:"
+                        latitude: "Latitude:",
+                        longitude: "Longitude:",
+                        speed: "Speed:",
+                        altitude: "Altitude:"
                     },
                     units: { speed: "km/h", altitude: "m" },
                     centerButtonText: "Center on Tracker"
                 }
             },
             tracker: {
-                useCustomIcon: false, customIconUrl: "", customIconSize: [32, 32],
-                defaultIconColor: "#3388ff", description: "Live GPS position",
+                useCustomIcon: false,
+                customIconUrl: "",
+                customIconSize: [32, 32],
+                defaultIconColor: "#3388ff",
+                description: "Live GPS position",
                 popupData: {
-                    showLatitude: true, showLongitude: true, showSpeed: true,
-                    showAltitude: true, showTimestamp: true, showDescription: true
+                    showLatitude: true,
+                    showLongitude: true,
+                    showSpeed: true,
+                    showAltitude: true,
+                    showTimestamp: true,
+                    showDescription: true
                 }
             },
             map: {
-                defaultZoom: 15, maxZoom: 19,
+                defaultZoom: 15,
+                maxZoom: 19,
                 tileLayer: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
                 attribution: "&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors"
             },
@@ -72,7 +84,7 @@ class GPSTracker {
         if (this.config.ui?.title?.webpage) {
             document.title = this.config.ui.title.webpage;
         }
-        
+
         if (this.config.ui?.title?.navbar) {
             const navbarTitle = document.querySelector('.tracker-header h1');
             if (navbarTitle) navbarTitle.textContent = this.config.ui.title.navbar;
@@ -116,7 +128,7 @@ class GPSTracker {
         if (this.config.ui?.statusBar) {
             const connectionLabel = document.querySelector('.status-item:first-child .status-label');
             const updateLabel = document.querySelector('.status-item:last-child .status-label');
-            
+
             if (connectionLabel && this.config.ui.statusBar.connectionLabel) {
                 connectionLabel.textContent = this.config.ui.statusBar.connectionLabel;
             }
@@ -163,26 +175,31 @@ class GPSTracker {
         try {
             const response = await fetch('/api/latest-gps');
             if (response.ok) {
-                const data = await response.json();
-                return data;
+                return await response.json();
             }
         } catch (error) {
-            console.log('No real GPS data available');
+            // silent
         }
     }
 
     async updateGPSData() {
         const data = await this.fetchLatestGPSData();
-        
         if (data) {
             this.isConnected = true;
-            this.lastUpdateTime = new Date();
-            this.updatePosition(data);
-            this.updateDataDisplay(data);
+            // Parse timestamps
+            this.hasFix = !!data.fix;
+            if (data.lastPacketTimestamp) this.lastPacketTime = new Date(data.lastPacketTimestamp);
+            if (data.lastFixTimestamp) this.lastFixTime = new Date(data.lastFixTimestamp);
+
+            if (this.hasFix) {
+                this.updatePosition(data);
+                this.updateDataDisplay(data);
+            } else {
+                // No fix: keep previous position display, maybe show sats/hdop later
+            }
         } else {
             this.isConnected = false;
         }
-        
         this.updateConnectionStatus();
     }
 
@@ -242,15 +259,15 @@ class GPSTracker {
         const config = this.config.tracker?.popupData || {};
         const trackerTitle = this.config.ui?.title?.tracker || "GPS Tracker";
         const description = this.config.tracker?.description || "";
-        
+
         let content = `<div class="tracker-popup">`;
         content += `<div class="popup-title">${trackerTitle}</div>`;
         content += `<div class="popup-data">`;
-        
+
         if (config.showDescription && description) {
             content += `<div style="margin-bottom: 8px; font-style: italic;">${description}</div>`;
         }
-        
+
         if (config.showLatitude || config.showLongitude) {
             content += `<strong>Coordinates:</strong><br>`;
             if (config.showLatitude && config.showLongitude) {
@@ -261,21 +278,22 @@ class GPSTracker {
                 content += `Lng: ${data.lng.toFixed(6)}<br><br>`;
             }
         }
-        
+
         if (config.showSpeed) {
             const speedUnit = this.config.ui?.dataPanel?.units?.speed || "km/h";
             content += `<strong>Speed:</strong> ${displaySpeed} ${speedUnit}<br>`;
         }
-        
+
         if (config.showAltitude) {
             const altUnit = this.config.ui?.dataPanel?.units?.altitude || "m";
             content += `<strong>Altitude:</strong> ${data.alt.toFixed(1)} ${altUnit}<br>`;
         }
-        
+
         if (config.showTimestamp) {
-            content += `<strong>Time:</strong> ${new Date().toLocaleTimeString()}`;
+            const ts = this.lastFixTime ? this.lastFixTime.toLocaleTimeString() : '—';
+            content += `<strong>Last Fix:</strong> ${ts}`;
         }
-        
+
         content += `</div></div>`;
         return content;
     }
@@ -284,7 +302,7 @@ class GPSTracker {
         const displaySpeed = data.speed < 2 ? 0 : data.speed.toFixed(2);
         const speedUnit = this.config.ui?.dataPanel?.units?.speed || "km/h";
         const altUnit = this.config.ui?.dataPanel?.units?.altitude || "m";
-        
+
         document.getElementById('latitude').textContent = data.lat.toFixed(6);
         document.getElementById('longitude').textContent = data.lng.toFixed(6);
         document.getElementById('speed').textContent = `${displaySpeed} ${speedUnit}`;
@@ -295,18 +313,34 @@ class GPSTracker {
         const statusElement = document.getElementById('connectionStatus');
         const lastUpdateElement = document.getElementById('lastUpdate');
 
-        if (this.isConnected) {
-            statusElement.textContent = 'Online';
-            statusElement.className = 'status-value online';
-        } else {
+        // Determine staleness (no packet for > 60s)
+        const now = Date.now();
+        const stale = this.lastPacketTime ? (now - this.lastPacketTime.getTime() > 60000) : false;
+
+        if (!this.isConnected || stale) {
             statusElement.textContent = 'Offline';
             statusElement.className = 'status-value offline';
+            if (!this.lastPacketTime) {
+                lastUpdateElement.textContent = 'Never';
+            } else {
+                lastUpdateElement.textContent = this.lastPacketTime.toLocaleTimeString();
+            }
+            return;
         }
 
-        if (this.lastUpdateTime) {
-            lastUpdateElement.textContent = this.lastUpdateTime.toLocaleTimeString();
+        if (this.isConnected && !this.hasFix) {
+            statusElement.textContent = 'No GPS Signal';
+            statusElement.className = 'status-value no-gps';
+        } else if (this.isConnected && this.hasFix) {
+            statusElement.textContent = 'Online';
+            statusElement.className = 'status-value online';
         }
 
+        if (this.lastPacketTime) {
+            lastUpdateElement.textContent = this.lastPacketTime.toLocaleTimeString();
+        } else {
+            lastUpdateElement.textContent = '—';
+        }
     }
 
     updateUI() {
@@ -325,7 +359,7 @@ class GPSTracker {
     startTracking() {
         // Initial update
         this.updateGPSData();
-        
+
         // Set up polling interval using configured interval
         const updateInterval = this.config.api?.updateInterval || 2000;
         this.pollInterval = setInterval(() => {
@@ -430,7 +464,7 @@ class GPSTracker {
 let gpsTracker;
 document.addEventListener('DOMContentLoaded', () => {
     gpsTracker = new GPSTracker();
-    
+
     // Handle page visibility changes to pause/resume tracking
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
